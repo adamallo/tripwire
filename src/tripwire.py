@@ -59,12 +59,16 @@ def blinkled(freq=0.1,length=4):
         time.sleep(freq/2)
 
 ##Blinks a led forever using the input pull-up as +. On and off times in seconds 
-def watching(on=0.5,off=4.5):
+def watching(stop,on=0.5,off=4.5):
     while 1:
+        if stop():
+            break
         ft232h.setup(pinled,GPIO.IN) #Using the pull-up as a less-intense output
         time.sleep(on)
         ft232h.setup(pinled,GPIO.OUT)
         ft232h.output(pinled,GPIO.LOW)
+        if stop():
+            break
         time.sleep(off)
 
 
@@ -74,12 +78,9 @@ def watching(on=0.5,off=4.5):
 # Note that pin numbers 0 to 15 map to pins D0 to D7 then C0 to C7 on the board.
 pinled=14 #C6
 pintrip=13 #C5
-
-MAXIT=10000000
-
-##I will need to modify this
 SLEEPBETWEEN=0.02 #I need to give time for the capacitor to discharge (and in the meantime the CPU rests too)
 MAXCYCLESDARK=1
+MAXIT=100
 
 # Init
 ######
@@ -98,13 +99,18 @@ ft232h.setup(pintrip, GPIO.OUT)  # Make pin C0 a digital output.
 ft232h.output(pintrip, GPIO.LOW) #Discharge capacitor
 ft232h.output(pinled,GPIO.LOW) #LED off
 
+is_blinking=False
+
 ##I need to improve this, getting some kind of identifier of the process and killing it when blinking and activate it back when finished
-thread.start_new_thread(watching,()) ##New thread blinking the LED for a given number of time
+thread.start_new_thread(watching,(lambda: is_blinking,)) ##New thread blinking the LED slowly until the alarm is activated
 
 while 1:
     n_cycles=check_tripwire()
     if n_cycles>MAXCYCLESDARK:
+        is_blinking=True
         thread.start_new_thread(blinkled,()) ##New thread blinking the LED for a given number of time
         trigger_mirror()
+        is_blinking=False
+        thread.start_new_thread(watching,(lambda: is_blinking,)) ##New thread blinking the LED slowly until the alarm is activated
     time.sleep(SLEEPBETWEEN) ##Discharge capacitor
 
