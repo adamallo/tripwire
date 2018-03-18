@@ -1,7 +1,7 @@
-#Tripwire
+# Tripwire
 Program to detect movement in a cubicle using a laser tripwire, showing the live feed from a camera in the computer as a mirror. Intended for private use but it may also inspire someone else.
 
-##Hardware
+## Hardware
 
 ### Components:
     - FT232H
@@ -12,7 +12,7 @@ Program to detect movement in a cubicle using a laser tripwire, showing the live
 ### Schematic:
     TBA
 
-##Software
+## Software
 
 ### Dependencies:
     - OpenCV
