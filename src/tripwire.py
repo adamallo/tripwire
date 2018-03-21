@@ -11,8 +11,7 @@ import thread
 
 #Shows the camera, mirrored for a given time in the center on the screen. Then, the window is minimized
 def trigger_mirror(time=4): #4 s
-    #cam = cv2.VideoCapture(1)
-    cam = cv2.VideoCapture(0)
+    cam = cv2.VideoCapture(CAM_DEVICE_NUMBER)
     cv2.startWindowThread()
     cv2.namedWindow("Tripware")
     os.system('''/usr/bin/osascript -e 'tell app "Finder" to set frontmost of process "Python" to true' ''') #Dirty way of bringing the window automatically up front. It seems there isn't a cleaner way
@@ -50,25 +49,31 @@ def check_tripwire():
     return it
 
 ##Blinks a led for a given time at a given frequency
-def blinkled(freq=0.1,length=4):
+def blinkled(blinking,freq=0.1,length=4):
+    blinking.switchOn()
     n_blinks=length/freq*2 #number of blink cycles (freq relates to each event, both on and off, that's why the 2)
     for i in xrange(0,int(n_blinks)):
         ft232h.output(pinled,GPIO.HIGH)
         time.sleep(freq/2)
         ft232h.output(pinled,GPIO.LOW)
         time.sleep(freq/2)
+    blinking.switchOff()
 
 ##Blinks a led forever using the input pull-up as +. On and off times in seconds 
-def watching(stop,on=0.5,off=4.5):
+def watching(blinking,on=0.5,off=4.5):
     while 1:
-        if stop():
-            break
+        if blinking.readswitch():
+            #print "Avoiding watching blinking";
+            return None
+    
         ft232h.setup(pinled,GPIO.IN) #Using the pull-up as a less-intense output
+        print "Hi"
         time.sleep(on)
         ft232h.setup(pinled,GPIO.OUT)
         ft232h.output(pinled,GPIO.LOW)
-        if stop():
-            break
+        if blinking.readswitch():
+            #print "Avoiding watching blinking";
+            return None
         time.sleep(off)
 
 
@@ -81,6 +86,7 @@ pintrip=13 #C5
 SLEEPBETWEEN=0.02 #I need to give time for the capacitor to discharge (and in the meantime the CPU rests too)
 MAXCYCLESDARK=1
 MAXIT=100
+CAM_DEVICE_NUMBER=1
 
 # Init
 ######
@@ -99,18 +105,25 @@ ft232h.setup(pintrip, GPIO.OUT)  # Make pin C0 a digital output.
 ft232h.output(pintrip, GPIO.LOW) #Discharge capacitor
 ft232h.output(pinled,GPIO.LOW) #LED off
 
-is_blinking=False
+#Class to have a global switch controled by the threads
+class globalswitch:
+        state=False
+        def switchOn(self):
+            self.state=True
+        def switchOff(self):
+            self.state=False
+        def readswitch(self):
+            return self.state
 
-##I need to improve this, getting some kind of identifier of the process and killing it when blinking and activate it back when finished
-thread.start_new_thread(watching,(lambda: is_blinking,)) ##New thread blinking the LED slowly until the alarm is activated
+is_blinking=globalswitch()
+is_blinking.switchOff()
+
+thread.start_new_thread(watching,(is_blinking,)) ##New thread blinking the LED slowly until the alarm is activated
 
 while 1:
     n_cycles=check_tripwire()
     if n_cycles>MAXCYCLESDARK:
-        is_blinking=True
-        thread.start_new_thread(blinkled,()) ##New thread blinking the LED for a given number of time
+        thread.start_new_thread(blinkled,(is_blinking,)) ##New thread blinking the LED for a given number of time
         trigger_mirror()
-        is_blinking=False
-        thread.start_new_thread(watching,(lambda: is_blinking,)) ##New thread blinking the LED slowly until the alarm is activated
+        thread.start_new_thread(watching,(is_blinking,)) ##New thread blinking the LED slowly until the alarm is activated
     time.sleep(SLEEPBETWEEN) ##Discharge capacitor
-
