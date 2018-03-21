@@ -67,7 +67,7 @@ def watching(blinking,on=0.5,off=4.5):
             return None
     
         ft232h.setup(pinled,GPIO.IN) #Using the pull-up as a less-intense output
-        print "Hi"
+        #print "Hi"
         time.sleep(on)
         ft232h.setup(pinled,GPIO.OUT)
         ft232h.output(pinled,GPIO.LOW)
