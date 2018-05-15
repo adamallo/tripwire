@@ -2,3 +2,4 @@ url="https://hooks.slack.com/services/XXXXXXXXX/XXXXXXXXX/xxxxxxxxxxxxxxxxxxxxxx
 text="There is someone in your cubicle!!!"
 icon=":rotating_light:"
 username="Laser tripwire"
+centerscript='/Users/Diego/Documents/Mis\ cosas/tripwire/src/apple_center_window.osascript'
