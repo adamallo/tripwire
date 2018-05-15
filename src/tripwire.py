@@ -5,17 +5,20 @@ import Adafruit_GPIO as GPIO
 import Adafruit_GPIO.FT232H as FT232H
 import ftdi1
 import thread
+from sharedconfig import *
+import requests
+import simplejson as json
 
 #Functions
 ##########
 
 #Shows the camera, mirrored for a given time in the center on the screen. Then, the window is minimized
-def trigger_mirror(time=4): #4 s
+def trigger_mirror(time=5): #5 s
     cam = cv2.VideoCapture(CAM_DEVICE_NUMBER)
     cv2.startWindowThread()
     cv2.namedWindow("Tripware")
     os.system('''/usr/bin/osascript -e 'tell app "Finder" to set frontmost of process "Python" to true' ''') #Dirty way of bringing the window automatically up front. It seems there isn't a cleaner way
-    thread.start_new_thread(os.system,("./apple_center_window.osascript",)) #Centering the window and eliminating the miniaturization
+    thread.start_new_thread(os.system,(applescript,)) #Centering the window and eliminating the miniaturization
     img_counter = 0
     nframes=time*25
     for i in xrange(0,nframes):
@@ -49,9 +52,9 @@ def check_tripwire():
     return it
 
 ##Blinks a led for a given time at a given frequency
-def blinkled(blinking,freq=0.1,length=4):
+def blinkled(blinking,freq=0.1,length=5):
     blinking.switchOn()
-    n_blinks=length/freq*2 #number of blink cycles (freq relates to each event, both on and off, that's why the 2)
+    n_blinks=length/freq #number of blink cycles (freq relates to each event, both on and off, that's why the 2)
     for i in xrange(0,int(n_blinks)):
         ft232h.output(pinled,GPIO.HIGH)
         time.sleep(freq/2)
@@ -76,6 +79,10 @@ def watching(blinking,on=0.5,off=4.5):
             return None
         time.sleep(off)
 
+def notify():
+    data = {'text': slackText, 'icon_emoji' : slackIcon, 'username' : slackUsername}
+    headers = {'Content-type': 'application/json'}
+    r = requests.post(slackUrl, data=json.dumps(data), headers=headers)
 
 # Configuration variables
 #########################
@@ -125,5 +132,6 @@ while 1:
     if n_cycles>MAXCYCLESDARK:
         thread.start_new_thread(blinkled,(is_blinking,)) ##New thread blinking the LED for a given number of time
         trigger_mirror()
+        thread.start_new_thread(notify,()) ##Notify Slack
         thread.start_new_thread(watching,(is_blinking,)) ##New thread blinking the LED slowly until the alarm is activated
     time.sleep(SLEEPBETWEEN) ##Discharge capacitor
